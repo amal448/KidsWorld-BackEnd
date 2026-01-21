@@ -20,7 +20,8 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "seed": "tsx src/seeds/seed.ts"
   },
   "author": "",
   "license": "ISC",

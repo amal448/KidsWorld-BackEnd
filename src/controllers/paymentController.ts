@@ -2,80 +2,91 @@ import { Request, Response } from "express";
 import Product from "../models/product.ts";
 import Order from "../models/order.ts";
 import Stripe from "stripe";
+import User from "../models/user.ts";
 
 export const initiatePayment = async (req: any, res: Response) => {
-    console.log("RECEIVED BODY:", req.body);
-    const { items, paymentMethod, address, shippingFee } = req.body;
+    const { items, paymentMethod, address, shippingFee, useWallet } = req.body;
+    const userId = req.user._id;
+    console.log("items",items);
 
     try {
-        // 1. Calculate Total and Prepare Items for Schema
+        // DEBUG: Check all products in DB
+        const allProducts = await Product.find().select('_id name');
+        console.log("All products in DB:", allProducts.map(p => p._id.toString()));
+
+        // 1. Calculate Official Total from Database (Never trust frontend totals)
         let subtotal = 0;
         const orderItems = [];
-
         for (const item of items) {
-            const productDoc = await Product.findById(item.productId);
-            if (!productDoc) {
-                return res.status(404).json({ message: `Product ${item.productId} not found` });
-            }
-
-            const itemPrice = productDoc.price;
-            subtotal += itemPrice * item.quantity;
-
-            // Mapping frontend 'productId' to Schema 'product' and adding 'priceAtPurchase'
-            orderItems.push({
-                product: item.productId,
-                quantity: item.quantity,
-                priceAtPurchase: itemPrice // Required by your validation error
-            });
+            console.log("Looking for product ID:", item.product);
+            const productDoc = await Product.findById(item.product);
+            console.log("productDoc",productDoc);
+            
+            if (!productDoc) return res.status(404).json({ message: "Product not found" });
+            subtotal += productDoc.price * item.quantity;
+            orderItems.push({ product: item.product, quantity: item.quantity, priceAtPurchase: productDoc.price });
         }
 
-        if (subtotal < 500) return res.status(400).json({ message: "Min order is 500" });
+        const tax = subtotal * 0.08;
+        const totalAmount = subtotal + tax + (shippingFee || 0);
 
-        const totalAmount = subtotal + (shippingFee || 0);
+        // 2. Handle Wallet Deduction
+        let walletDeducted = 0;
+        let remainingToPay = totalAmount;
 
-        // 2. Handle COD
+        if (useWallet) {
+            const user = await User.findById(userId);
+            if (user && user.walletBalance > 0) {
+                walletDeducted = Math.min(user.walletBalance, totalAmount);
+                remainingToPay = totalAmount - walletDeducted;
+
+                // Atomic Update: Deduct money from User
+                user.walletBalance -= walletDeducted;
+                await user.save();
+            }
+        }
+
+        // 3. If Fully Paid by Wallet
+        if (remainingToPay <= 0) {
+            const order = await Order.create({
+                user: userId, items: orderItems, subtotal, shippingFee, 
+                totalAmount, paymentMethod: 'Wallet', paymentStatus: 'Completed',
+                orderStatus: 'Placed', pincode: address.zipCode, deliveryAddress: address
+            });
+            return res.status(201).json({ message: "Paid via Wallet", order });
+        }
+
+        // 4. If Split or COD
         if (paymentMethod === 'COD') {
             const order = await Order.create({
-                user: req.user._id,
-                items: orderItems, // Using the mapped items
-                subtotal: subtotal,
-                shippingFee: shippingFee || 0, // Required by your validation error
-                totalAmount: totalAmount,
-                paymentMethod: 'COD',
-                paymentStatus: 'Pending',
-                orderStatus: 'Placed',
-                pincode: address.zipCode, // Getting it from the nested address object
-                deliveryAddress: address
+                user: userId, items: orderItems, subtotal, shippingFee, 
+                totalAmount, paymentMethod: 'COD', paymentStatus: 'Pending',
+                orderStatus: 'Placed', pincode: address.zipCode, deliveryAddress: address
+                // Tip: Save walletDeducted in your Order schema to track split payments
             });
-
-            return res.status(201).json({ message: "COD Order Placed", order });
+            return res.status(201).json({ message: "Order Placed", order });
         }
 
-        // 3. Handle Online (Stripe)
+        // 5. Handle Stripe for Remaining Balance
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
-            line_items: orderItems.map((i: any) => ({
+            line_items: [{
                 price_data: {
-                    currency: 'usd',
-                    product_data: { name: 'Product Order' },
-                    unit_amount: i.priceAtPurchase * 100,
+                    currency: 'inr',
+                    product_data: { name: 'KidsWorld Order Payment' },
+                    unit_amount: Math.round(remainingToPay * 100), // Stripe uses cents/paise
                 },
-                quantity: i.quantity,
-            })),
+                quantity: 1,
+            }],
             mode: 'payment',
-            success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+            success_url: `${process.env.FRONTEND_URL}/success?orderId={CHECKOUT_SESSION_ID}`,
             cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-            metadata: { 
-                userId: req.user._id.toString(), 
-                address: JSON.stringify(address),
-                zipCode: address.zipCode 
-            }
+            metadata: { userId: userId.toString(), walletUsed: walletDeducted.toString() }
         });
 
         res.status(200).json({ url: session.url });
 
     } catch (error: any) {
-        console.error("ORDER ERROR:", error);
         res.status(500).json({ message: error.message });
     }
 };

@@ -35,3 +35,69 @@ export const getMyOrders = async (req: any, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// --- ADMIN ACTIONS ---
+
+export const getAllUsers = async (req: any, res: Response) => {
+    try {
+        const users = await User.find({ role: 'user' })
+            .select('-password') // Exclude password field
+            .sort({ createdAt: -1 }); // Newest first
+
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            users
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --- ADMIN: EDIT USER ---
+export const editUser = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const { name, email, avatar, walletBalance } = req.body;
+
+        // Find and update user (excluding role and password)
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { name, email, avatar, walletBalance },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'User updated successfully',
+            user
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --- ADMIN: DELETE USER ---
+export const deleteUser = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await User.findByIdAndDelete(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'User deleted successfully',
+            deletedUser: { id: user._id, name: user.name, email: user.email }
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -33,7 +33,12 @@ export const createCategory = async (req: Request, res: Response) => {
 // --- ADMIN: Update Category (e.g., Change name or Disable) ---
 export const updateCategory = async (req: Request, res: Response) => {
     const { id } = req.params;
+    console.log("updateCategoryupdateCategory",id);
+    console.log(" req.body req.body", req.body);
+    
     const category = await Category.findByIdAndUpdate(id, req.body, { new: true });
+    console.log("category",category);
+   
     res.status(200).json({ message: "Category updated", category });
 };
 // --- ADMIN: Delete Category ---

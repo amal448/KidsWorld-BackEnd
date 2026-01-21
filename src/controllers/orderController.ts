@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Order from "../models/order.ts";
 import User from '../models/user.ts'
 import { AuthRequest } from "../middlewares/auth.middleware.ts";
+import { sendEmail } from '../config/nodeMailer.ts';
 
 
 export const checkDeliveryAvailability = async (req: Request, res: Response) => {
@@ -74,40 +75,7 @@ export const cancelOrder = async (req: any, res: Response) => {
     });
 };
 
-// --- ADMIN CANCELLATION (Full Refund - No Deduction) ---
-export const adminCancelOrder = async (req: Request, res: Response) => {
-    const { orderId } = req.params;
-    const { reason } = req.body; // "delivery issues", "faulty product", "out of stock"
 
-    const order = await Order.findById(orderId);
-
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-    // Admin can cancel unless it's already delivered
-    if (order.orderStatus === 'Delivered') {
-        return res.status(400).json({ message: "Order already delivered." });
-    }
-
-    // FULL REFUND logic
-    const refundAmount = order.totalAmount;
-
-    // 1. Return 100% to User's Wallet
-    await User.findByIdAndUpdate(order.user, {
-        $inc: { walletBalance: refundAmount }
-    });
-
-    // 2. Update Order with Reason
-    order.orderStatus = 'Cancelled';
-    order.paymentStatus = 'Refunded';
-    order.refundedAmount = refundAmount;
-    order.cancellationFee = 0; // No penalty when admin cancels
-    // You could also add a field for 'cancellationReason' if you want to track it
-    await order.save();
-
-    res.status(200).json({ 
-        message: `Order cancelled by Admin (${reason}). Full refund of ${refundAmount} sent to user wallet.` 
-    });
-};
 // 1. Import your custom request type
 // If it's in a different file, import it: import { AuthRequest } from '../middleware/authMiddleware';
 
@@ -130,6 +98,136 @@ export const myOrders = async (req: AuthRequest, res: Response) => {
             orders
         });
     } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --- ADMIN: GET ALL ORDERS ---
+export const getAllOrders = async (req: Request, res: Response) => {
+    try {
+        const orders = await Order.find()
+            .populate('user', 'name email') // Get user details
+            .populate('items.product', 'name images price') // Get product details
+            .sort({ createdAt: -1 }); // Newest first
+
+        res.status(200).json({
+            success: true,
+            count: orders.length,
+            orders
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --- ADMIN: UPDATE ORDER STATUS ---
+export const updateOrderStatus = async (req: Request, res: Response) => {
+    console.log("updateOrderStatusupdateOrderStatus",req.body);
+    
+    try {
+        const { orderId } = req.params;
+        console.log("orderId",orderId);
+        const { orderStatus} = req.body; // status: 'Processing', 'OutForDelivery', 'Delivered', 'Cancelled'
+
+        // Validate status
+        const validStatuses = ['Placed', 'Processing', 'OutForDelivery', 'Delivered', 'Cancelled'];
+        if (!validStatuses.includes(orderStatus)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Fetch user separately to ensure it exists
+        const user = await User.findById(order.user);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Cannot change if already delivered
+        if (order.orderStatus === 'Delivered' && orderStatus !== 'Delivered') {
+            return res.status(400).json({ message: 'Cannot change status of delivered order' });
+        }
+
+        const oldStatus = order.orderStatus;
+
+        // Handle Cancellation
+        if (orderStatus === 'Cancelled') {
+            const refundAmount = order.totalAmount;
+
+            // 1. Add refund to user wallet
+            await User.findByIdAndUpdate(order.user, {
+                $inc: { walletBalance: refundAmount }
+            });
+
+            // 2. Update order
+            order.orderStatus = 'Cancelled';
+            order.paymentStatus = 'Refunded';
+            order.refundedAmount = refundAmount;
+            order.cancellationFee = 0;
+            await order.save();
+
+            // 3. Send cancellation email to user
+            try {
+                await sendEmail(
+                    user.email,
+                    'Your Order Has Been Cancelled',
+                    'order-cancelled-template',
+                    {
+                        name: user.name,
+                        orderId: order._id,
+                        reason: 'We apologize, but a technical error occurred while processing your order, and it has been cancelled. To ensure you can re-order quickly, your refund has been processed and is now available in your Account Wallet. ',
+                        refundAmount,
+                        refundedAmount: refundAmount,
+                        cancellationFee: 0,
+                        frontendUrl: process.env.FRONTEND_URL,
+                        items: order.items
+                    }
+                );
+            } catch (emailError) {
+                console.error('Email sending failed:', emailError);
+                // Don't fail the API call if email fails
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: `Order cancelled. Refund of ${refundAmount} sent to user wallet and email notified.`,
+                order
+            });
+        }
+
+        // Handle other status updates
+        order.orderStatus = orderStatus as any;
+        await order.save();
+
+        // Send status update email to user
+        try {
+            await sendEmail(
+                user.email,
+                'Your Order Status Updated',
+                'order-status-template',
+                {
+                    name: user.name,
+                    orderId: order._id,
+                    status: orderStatus,
+                    frontendUrl: process.env.FRONTEND_URL
+                }
+            );
+        } catch (emailError) {
+            console.error('Email sending failed:', emailError);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Order status updated to ${orderStatus}. User notified via email.`,
+            order
+        });
+    } catch (error: any) {
+        console.log("errrrrrr",error);
+        
         res.status(500).json({ message: error.message });
     }
 };

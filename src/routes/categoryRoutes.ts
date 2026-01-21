@@ -11,7 +11,7 @@ router.post('/', protect, authorize('admin'), upload.single('image'),categoryCon
 
 // Only Admins can manage them
 
-router.patch('/:id', protect, authorize('admin'), categoryController.updateCategory);
+router.patch('/:id', protect, authorize('admin'),  upload.single('image'), categoryController.updateCategory);
 router.delete('/:id', protect, authorize('admin'), categoryController.deleteCategory);
 
 export default router;

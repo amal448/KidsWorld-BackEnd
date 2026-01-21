@@ -9,7 +9,7 @@ router.get('/', productController.getProducts);
 router.get('/:id', productController.getProductById);
 router.get('/featured', productController.getFeaturedProducts);
 router.post(
-    '/',
+    '/new',
     protect,
     authorize('admin'),
     upload.fields([{ name: 'images', maxCount: 5 }, { name: 'heroVideo', maxCount: 1 }]),

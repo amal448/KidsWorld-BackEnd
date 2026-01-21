@@ -10,6 +10,7 @@ import categoryroute from './routes/categoryRoutes';
 import productroute from './routes/productRoutes';
 import orderroute from './routes/orderRoutes';
 import paymentroute from './routes/paymentRoutes';
+import userroute from './routes/userRoutes';
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/category', categoryroute);
 app.use('/api/product', productroute);
 app.use('/api/order', orderroute);
 app.use('/api/payment', paymentroute);
+app.use('/api/user', userroute);
 
 // 5. ERROR HANDLING (Production Standard)
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
