@@ -17,8 +17,9 @@ const app = express();
 // 1. GLOBAL SECURITY & CORS
 const allowedOrigins = [
   "https://kids-world-front-end.vercel.app",
-  "http://localhost:3000"
-];
+  "http://localhost:3000",
+  process.env.FRONTEND_URL, // Add your Render frontend URL here
+].filter(Boolean); // Remove undefined values
 
 // ✅ IMPORTANT: Define CORS options outside to reuse
 const corsOptions = {
