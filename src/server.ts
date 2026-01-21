@@ -1,6 +1,6 @@
 import 'dotenv/config'
-import app from './app.ts'
-import { connectDB } from './config/DbConnect.ts'
+import app from './app'
+import { connectDB } from './config/DbConnect'
 
 const PORT =process.env.PORT 
 

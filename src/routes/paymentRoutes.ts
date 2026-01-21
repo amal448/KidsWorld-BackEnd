@@ -1,5 +1,5 @@
 import express from 'express';
-import * as paymentController from '../controllers/paymentController.ts';
+import * as paymentController from '../controllers/paymentController';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();

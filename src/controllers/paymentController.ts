@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import Product from "../models/product.ts";
-import Order from "../models/order.ts";
+import Product from "../models/product";
+import Order from "../models/order";
 import Stripe from "stripe";
-import User from "../models/user.ts";
+import User from "../models/user";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
     apiVersion: '2023-10-16' as any

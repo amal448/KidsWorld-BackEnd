@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import Order from "../models/order.ts";
-import User from '../models/user.ts'
-import { AuthRequest } from "../middlewares/auth.middleware.ts";
-import { sendEmail } from '../config/nodeMailer.ts';
+import Order from "../models/order";
+import User from '../models/user'
+import { AuthRequest } from "../middlewares/auth.middleware";
+import { sendEmail } from '../config/nodeMailer';
 
 
 export const checkDeliveryAvailability = async (req: Request, res: Response) => {

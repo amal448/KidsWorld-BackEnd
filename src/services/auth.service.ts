@@ -2,10 +2,10 @@ import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt'
-import redis from '../config/redis.ts'
-import User from '../models/user.ts';
+import redis from '../config/redis'
+import User from '../models/user';
 import 'dotenv/config'
-import { RotateTokenResult } from '../type.ts';
+import { RotateTokenResult } from '../type';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 interface RefreshTokenPayload extends JwtPayload {

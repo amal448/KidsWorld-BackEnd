@@ -1,7 +1,7 @@
-import { upload } from '../middlewares/upload.middleware.ts';
+import { upload } from '../middlewares/upload.middleware';
 import express from 'express';
-import { protect, authorize } from '../middlewares/auth.middleware.ts';
-import * as productController from '../controllers/productController.ts';
+import { protect, authorize } from '../middlewares/auth.middleware';
+import * as productController from '../controllers/productController';
 
 const router = express.Router();
 

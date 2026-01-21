@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import Category from '../models/category.ts';
-import Product from '../models/product.ts';
-import User from '../models/user.ts';
+import Category from '../models/category';
+import Product from '../models/product';
+import User from '../models/user';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
 

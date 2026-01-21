@@ -1,8 +1,8 @@
 // src/routes/categoryRoutes.ts
 import express from 'express';
-import * as categoryController from '../controllers/categoryController.ts';
-import { protect, authorize } from '../middlewares/auth.middleware.ts';
-import { upload } from '../middlewares/upload.middleware.ts';
+import * as categoryController from '../controllers/categoryController';
+import { protect, authorize } from '../middlewares/auth.middleware';
+import { upload } from '../middlewares/upload.middleware';
 const router = express.Router();
 
 // Anyone can see categories
