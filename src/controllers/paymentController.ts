@@ -4,6 +4,10 @@ import Order from "../models/order.ts";
 import Stripe from "stripe";
 import User from "../models/user.ts";
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+    apiVersion: '2023-10-16' as any
+});
+
 export const initiatePayment = async (req: any, res: Response) => {
     const { items, paymentMethod, address, shippingFee, useWallet } = req.body;
     const userId = req.user._id;
@@ -92,20 +96,25 @@ export const initiatePayment = async (req: any, res: Response) => {
 };
 
 export const handleWebhook = async (req: Request, res: Response) => {
-    const sig = req.headers['stripe-signature'];
+    const sig = req.headers['stripe-signature'] as string;
     let event;
 
     try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            sig,
+            process.env.STRIPE_WEBHOOK_SECRET || ''
+        );
+    } catch (err: any) {
+        console.error('Webhook signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
+        const session = event.data.object as Stripe.Checkout.Session;
         // Logic: Find the order by metadata and update status
         await Order.findOneAndUpdate(
-            { user: session.metadata.userId, paymentStatus: 'Pending' },
+            { user: session.metadata?.userId, paymentStatus: 'Pending' },
             { paymentStatus: 'Completed', orderStatus: 'Processing' }
         );
     }
