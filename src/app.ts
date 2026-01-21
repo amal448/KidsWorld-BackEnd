@@ -15,13 +15,25 @@ import userroute from './routes/userRoutes';
 const app = express();
 
 // 1. GLOBAL SECURITY & CORS
+const allowedOrigins = [
+  "https://kids-world-front-end.vercel.app",
+  "http://localhost:3000"
+];
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
-
 // 2. BODY PARSERS (Must be before routes)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

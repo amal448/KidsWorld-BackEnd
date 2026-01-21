@@ -1,0 +1,13 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "src/server.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}
