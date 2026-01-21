@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import User from '../models/user.ts';
 import Order from '../models/order'
+import Product from '../models/product.ts';
 
 // --- USER ACTIONS (Self) ---
 
@@ -99,5 +100,133 @@ export const deleteUser = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+
+
+
+export const getAnalysis = async (req: Request, res: Response) => {
+    try {
+        const start = req.query.from ? new Date(req.query.from as string) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const end = req.query.to ? new Date(req.query.to as string) : new Date();
+
+        // Adjust end date to end of day if it's the same as start or just a date string
+        if (req.query.to && req.query.to.toString().length <= 10) {
+            end.setHours(23, 59, 59, 999);
+        }
+
+        const matchStage = {
+            createdAt: { $gte: start, $lte: end }
+        };
+
+        const analytics = await Order.aggregate([
+            { $match: matchStage },
+            {
+                $facet: {
+                    // 1. BIG FOUR METRICS
+                    "stats": [
+                        {
+                            $group: {
+                                _id: null,
+                                totalRevenue: { $sum: "$totalAmount" }, // Net Revenue (simplified)
+                                orderVolume: { $sum: 1 },
+                                activeUsers: { $addToSet: "$user" } // Set of unique user IDs
+                            }
+                        },
+                        {
+                            $project: {
+                                totalRevenue: 1,
+                                orderVolume: 1,
+                                activeUsers: { $size: "$activeUsers" },
+                                conversionRate: { $literal: 0 } // Placeholder: requires session tracking
+                            }
+                        }
+                    ],
+
+                    // 2. REVENUE VS CANCELLATIONS GRAPH (Daily)
+                    "revenueGraph": [
+                        {
+                            $group: {
+                                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                                sales: { $sum: { $cond: [{ $ne: ["$orderStatus", "Cancelled"] }, "$totalAmount", 0] } },
+                                cancellations: { $sum: { $cond: [{ $eq: ["$orderStatus", "Cancelled"] }, "$totalAmount", 0] } }
+                            }
+                        },
+                        { $sort: { "_id": 1 } }
+                    ],
+
+                    // 3. ORDER STATUS DISTRIBUTION (Donut)
+                    "orderStatus": [
+                        {
+                            $group: {
+                                _id: "$orderStatus",
+                                value: { $sum: 1 }
+                            }
+                        },
+                        {
+                            $project: {
+                                name: "$_id",
+                                value: 1,
+                                _id: 0
+                            }
+                        }
+                    ],
+
+                    // 4. CATEGORY PERFORMANCE (Bar)
+                    "categoryPerformance": [
+                        { $unwind: "$items" },
+                        {
+                            $lookup: {
+                                from: "products",
+                                localField: "items.product",
+                                foreignField: "_id",
+                                as: "productDetails"
+                            }
+                        },
+                        { $unwind: "$productDetails" },
+                        {
+                            $lookup: {
+                                from: "categories",
+                                localField: "productDetails.category",
+                                foreignField: "_id",
+                                as: "categoryDetails"
+                            }
+                        },
+                        { $unwind: "$categoryDetails" },
+                        {
+                            $group: {
+                                _id: "$categoryDetails.name",
+                                value: { $sum: "$items.quantity" }, // Start with quantity, could be revenue
+                                revenue: { $sum: { $multiply: ["$items.quantity", "$items.priceAtPurchase"] } }
+                            }
+                        },
+                        { $sort: { value: -1 } },
+                        { $limit: 5 },
+                        {
+                            $project: {
+                                name: "$_id",
+                                value: 1,
+                                revenue: 1,
+                                _id: 0
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+
+        const result = analytics[0];
+        // Format response to match frontend expectations
+        res.status(200).json({
+            stats: result.stats[0] || { totalRevenue: 0, orderVolume: 0, activeUsers: 0, conversionRate: 0 },
+            revenueGraph: result.revenueGraph,
+            orderStatus: result.orderStatus,
+            categoryPerformance: result.categoryPerformance
+        });
+
+    } catch (error: any) {
+        console.error("Analysis Error:", error);
+        res.status(500).json({ message: "Analysis failed", error: error.message });
     }
 };

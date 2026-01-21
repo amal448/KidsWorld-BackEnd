@@ -13,5 +13,6 @@ router.get('/my-orders', protect, userController.getMyOrders);
 router.get('/', protect, authorize('admin'), userController.getAllUsers);
 router.patch('/:userId', protect, authorize('admin'), userController.editUser);
 router.delete('/:userId', protect, authorize('admin'), userController.deleteUser);
+router.get('/analysis', protect, authorize('admin'), userController.getAnalysis);
 
 export default router;
