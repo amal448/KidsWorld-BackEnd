@@ -9,11 +9,11 @@ import { sendEmail } from '../config/nodeMailer';
 
 
 // Define this at the top of your controller file
-// Define this at the top of your controller file
+// For cross-domain cookie transmission, use 'none' with secure: true
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const, // <--- CHANGE THIS FROM 'strict' TO 'lax'
+  secure: true, // ✅ ALWAYS true in production (HTTPS required)
+  sameSite: 'none' as const, // ✅ REQUIRED for cross-domain cookies (frontend.vercel.app -> backend.vercel.app)
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
