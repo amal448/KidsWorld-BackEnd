@@ -39,11 +39,9 @@ const corsOptions = {
   optionsSuccessStatus: 200, // ✅ For legacy browser support
 };
 
-// ✅ Apply CORS to all routes
+// ✅ Apply CORS to all routes (handles preflight OPTIONS automatically)
 app.use(cors(corsOptions));
 
-// ✅ Explicit OPTIONS handler for preflight requests
-app.options('*', cors(corsOptions));
 // 2. BODY PARSERS (Must be before routes)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
