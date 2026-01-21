@@ -19,23 +19,30 @@ const allowedOrigins = [
   "https://kids-world-front-end.vercel.app",
   "http://localhost:3000"
 ];
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+// ✅ IMPORTANT: Define CORS options outside to reuse
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200, // ✅ For legacy browser support
+};
+
+// ✅ Apply CORS to all routes
+app.use(cors(corsOptions));
+
+// ✅ Explicit OPTIONS handler for preflight requests
+app.options('*', cors(corsOptions));
 // 2. BODY PARSERS (Must be before routes)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
