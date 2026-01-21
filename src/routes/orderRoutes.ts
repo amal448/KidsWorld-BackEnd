@@ -1,5 +1,5 @@
 import express from 'express';
-import * as orderController from '../controllers/orderController';
+import * as orderController from '../controllers/orderController.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();

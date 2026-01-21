@@ -2,15 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
-import './config/passport'; // Strategy initialization
+import './config/passport.js'; // Strategy initialization
 
 // Route Imports
-import authroute from './routes/authRoutes';
-import categoryroute from './routes/categoryRoutes';
-import productroute from './routes/productRoutes';
-import orderroute from './routes/orderRoutes';
-import paymentroute from './routes/paymentRoutes';
-import userroute from './routes/userRoutes';
+import authroute from './routes/authRoutes.js';
+import categoryroute from './routes/categoryRoutes.js';
+import productroute from './routes/productRoutes.js';
+import orderroute from './routes/orderRoutes.js';
+import paymentroute from './routes/paymentRoutes.js';
+import userroute from './routes/userRoutes.js';
 
 const app = express();
 

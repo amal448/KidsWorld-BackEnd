@@ -1,6 +1,6 @@
 // src/controllers/categoryController.ts
 import { Request, Response } from 'express';
-import Category  from '../models/category'
+import Category  from '../models/category.js'
 
 // --- PUBLIC: Get all active categories for the Navbar/Home ---
 export const getCategories = async (req: Request, res: Response) => {

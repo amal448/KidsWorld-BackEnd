@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import User from '../models/user';
-import Order from '../models/order'
-import Product from '../models/product';
+import User from '../models/user.js';
+import Order from '../models/order.js'
+import Product from '../models/product.js';
 
 // --- USER ACTIONS (Self) ---
 

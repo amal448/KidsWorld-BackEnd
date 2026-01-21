@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
-import AuthService from '../services/auth.service';
-import redis from '../config/redis';
-import User from '../models/user';
-import OtpService from '../services/otp.service';
-import { sendEmail } from '../config/nodeMailer';
+import AuthService from '../services/auth.service.js';
+import redis from '../config/redis.js';
+import User from '../models/user.js';
+import OtpService from '../services/otp.service.js';
+import { sendEmail } from '../config/nodeMailer.js';
 
 
 // Define this at the top of your controller file
